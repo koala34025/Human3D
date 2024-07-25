@@ -139,8 +139,14 @@ def prepare_data(mesh, device):
     
     # normalization for point cloud features
     # wtf?
-    color_mean = (0.47793125906962, 0.4303257521323044, 0.3749598901421883)
-    color_std = (0.2834475483823543, 0.27566157565723015, 0.27018971370874995)
+    # color_mean = (0.47793125906962, 0.4303257521323044, 0.3749598901421883)
+    # color_std = (0.2834475483823543, 0.27566157565723015, 0.27018971370874995)
+
+    color_mean, color_std = np.array([1.0, 1.0, 1.0]), np.array(
+                [1.0, 1.0, 1.0]
+            )
+    # how about this?
+    #?cfg.data.validation_dataset.color_mean_std = [(0.5, 0.5, 0.5), (1, 1, 1)]
     normalize_color = A.Normalize(mean=color_mean, std=color_std)
 
     
@@ -157,34 +163,53 @@ def prepare_data(mesh, device):
     points[:, 2] = -points[:, 2]
     # print(points)
 
-    pseudo_image = colors.astype(np.uint8)[np.newaxis, :, :] # this belongs to body part?
-    colors = np.squeeze(normalize_color(image=pseudo_image)["image"])
+    pseudo_image = colors.astype(np.uint8)[np.newaxis, :, :] # (this belongs to body part?)
+    colors = np.squeeze(normalize_color(image=pseudo_image)["image"]) # so should be sample[1]
+
+    # exmaple needs these, idk why?
+    colors = np.hstack((colors, points))
+    colors[:, :3] = 1.0  # make sure no color information is leaked
+    
+    # print("~~~~~~~~~~~~~~~")
+    # print(colors)
+    # print("~~~~~~~~~~~~~~~")
 
     voxel_size = 0.02
-    coords = np.floor(points / voxel_size)
+    coords = np.floor(points / voxel_size) # points = sample[0]
     
     _, _, unique_map, inverse_map = ME.utils.sparse_quantize(
         coordinates=torch.from_numpy(coords).contiguous(),
-        features=colors,
+        features=colors, # should send in sample[1]
         return_index=True,
         return_inverse=True,
     )
 
+    # print("---------------------------------")
+    # print(coords)
+    # print("--------------")
+    # print(unique_map)
+    # print("--------------")
+    # print(colors) #   SAME
+    # print("---------------------------------")
+
     sample_coordinates = coords[unique_map]
     coordinates = [torch.from_numpy(sample_coordinates).int()]
-    sample_features = colors[unique_map] # problem comes from here
+    sample_features = colors[unique_map]
     features = [torch.from_numpy(sample_features).float()]
 
-    coordinates, _ = ME.utils.sparse_collate(coords=coordinates, feats=features)
-    features = torch.cat(features, dim=0)
+    coordinates, features = ME.utils.sparse_collate(coords=coordinates, feats=features)
+    # features = torch.cat(features, dim=0) # idk why comment
+    raw_coordinates = features[:, -3:]
+    features = features[:, :-3]
+
     # print(coordinates) # SAME
     # print(features)
-    # TODO: hard code features here?
+
+    # print("^^^^^^^^^^^^^^^^^^^^^^^^")
+    # print(coordinates)
     # print(features)
-    # print(features.shape)
-    shape = (56818, 3)
-    features = torch.ones(shape)
-    # print(features)
+    # print("^^^^^^^^^^^^^^^^^^^^^^^^")
+    
     data = ME.SparseTensor(
         coordinates=coordinates,
         features=features,
@@ -192,7 +217,7 @@ def prepare_data(mesh, device):
     )
     
     # same inverse_map
-    return data, points, colors, features, unique_map, inverse_map
+    return data, points, colors, features, unique_map, inverse_map, raw_coordinates
 
 
 def map_output_to_pointcloud(mesh, 
@@ -309,21 +334,22 @@ if __name__ == '__main__':
     model.to(device)
     
     # load input data
-    pointcloud_file = 'myevaldata/recording_20210910_S05_S06_01_scene_main_01661.ply'
+    pointcloud_file = 'myevaldata/recording_20210910_S05_S06_01_scene_main_01721.ply'
     mesh = load_mesh(pointcloud_file)
     
     # prepare data
-    data, points, colors, features, unique_map, inverse_map = prepare_data(mesh, device)
+    data, points, colors, features, unique_map, inverse_map, raw_coordinates = prepare_data(mesh, device)
 
     # data now same
     # feature is raw corod?? NO
     # also hard code here features
     # print(features)
     # print(features.shape)
-    features = torch.load('raw_coordinates.pt')
     # run model
+    # print(data)
+    # print(features)
     with torch.no_grad():
-        outputs = model(data, raw_coordinates=features) # OK NO PROB if hard code
+        outputs = model(data, raw_coordinates=raw_coordinates) # OK NO PROB if hard code
     # print(outputs.keys())
     # print(outputs)
     # map output to point cloud
