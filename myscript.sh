@@ -1,0 +1,4 @@
+#
+python myevalmypc.py myevaldata/recording_20210910_S05_S06_01_scene_main_01661.ply
+python myevalmypc.py myevaldata/recording_20210910_S05_S06_01_scene_main_01721.ply
+python myevalmypc.py myevaldata/recording_20210910_S05_S06_01_scene_main_02441.ply

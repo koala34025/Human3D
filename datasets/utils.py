@@ -46,6 +46,11 @@ class VoxelizeCollate:
             batch = make_crops(batch)
         if ("train" in self.mode) and self.very_small_crops:
             batch = make_crops(batch)
+        print("come 49? YES HERE")
+
+        # import pdb
+        # pdb.set_trace()
+
         return voxelize(
             batch,
             self.ignore_label,
@@ -265,6 +270,9 @@ def voxelize(
     full_res_coords = []
 
     for sample in batch:
+        # print("==========================================")
+        # print(sample[1])
+        # print("==========================================")
         idx.append(sample[7])
         original_coordinates.append(sample[6])
         original_labels.append(sample[2])
@@ -288,6 +296,14 @@ def voxelize(
             **voxelization_dict
         )
         inverse_maps.append(inverse_map)
+
+        # print("---------------------------------")
+        # print(coords)
+        # print("--------------")
+        # print(unique_map)
+        # print("--------------")
+        # print(sample[1])
+        # print("---------------------------------")
 
         sample_coordinates = coords[unique_map]
         coordinates.append(torch.from_numpy(sample_coordinates).int())

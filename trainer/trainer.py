@@ -401,10 +401,15 @@ class InstanceSegmentation(pl.LightningModule):
         pred_normals = []
         pred_sem_color = []
         pred_inst_color = []
-
+        print(sorted_masks)
         for did in range(len(sorted_masks)):
+            # print("%")
+            # print(did)
             for i in reversed(range(sorted_masks[did].shape[1])):
+                # print("#")
+                # print(i)
                 if sort_scores_values[did][i] > 0.5:
+                    print(i)
                     mask_coords = full_res_coords[
                         sorted_masks[did][:, i].astype(bool), :
                     ]
@@ -418,6 +423,7 @@ class InstanceSegmentation(pl.LightningModule):
                         continue
 
                     pred_coords.append(mask_coords)
+                    print(mask_coords.shape)
                     pred_normals.append(mask_normals)
 
                     pred_sem_color.append(
@@ -440,7 +446,9 @@ class InstanceSegmentation(pl.LightningModule):
                 pred_normals = np.concatenate(pred_normals)
                 pred_sem_color = np.concatenate(pred_sem_color)
                 pred_inst_color = np.hstack(pred_inst_color)[0]
-
+                # print(pred_coords.shape) # coords to color 0.0
+                # print(pred_inst_color.shape)
+                # print("add how many 0.0?") # one time but diff target
                 v.add_points(
                     "Instances (Mask3D)",
                     pred_coords,
@@ -748,13 +756,27 @@ class InstanceSegmentation(pl.LightningModule):
             return 0.0
 
         raw_coordinates = None
+        # print(data.features)
         if self.config.data.add_raw_coordinates:
+            # print("**********************************************************8hehre?")
             raw_coordinates = data.features[:, -3:]
             data.features = data.features[:, :-3]
 
         if raw_coordinates.shape[0] == 0:
             return 0.0
+        # print(data.coordinates) # SAME
+        # print(data.features)
+        # print(data.features.shape)
+        # # Check if all elements are 1
+        # all_ones = torch.all(data.features == 1.0)
 
+        # print("All values are 1:", all_ones.item())
+
+        print("^^^^^^^^^^^^^^^^^^^^^^^^")
+        print(data.coordinates)
+        print(data.features)
+        print("^^^^^^^^^^^^^^^^^^^^^^^^")
+        
         data = ME.SparseTensor(
             coordinates=data.coordinates,
             features=data.features,
@@ -762,6 +784,11 @@ class InstanceSegmentation(pl.LightningModule):
         )
 
         try:
+            # data now same
+            # print(data)
+            # print(raw_coordinates)
+            # print(raw_coordinates.shape)
+            # torch.save(raw_coordinates, 'raw_coordinates.pt')
             output = self.forward(
                 data,
                 point2segment=[
@@ -772,6 +799,8 @@ class InstanceSegmentation(pl.LightningModule):
                 clip_feat=clip_feat,
                 clip_pos=clip_pos,
             )
+            # print(output.keys())
+            # print(output)
         except RuntimeError as run_err:
             print(run_err)
             if (
@@ -830,6 +859,8 @@ class InstanceSegmentation(pl.LightningModule):
             self.config.data.part2human
             or "pred_human_logits" not in output.keys()
         ):
+            print("hereyes?")
+            print("SAVE" if self.config.general.save_visualizations else "NO SAVE")
             self.eval_instance_step_instance_segmentation(
                 output,
                 target,
@@ -876,8 +907,8 @@ class InstanceSegmentation(pl.LightningModule):
         self, mask, inverse_map, point2segment_full, is_heatmap=False
     ):
         mask = mask.detach().cpu()[inverse_map]  # full res
-
-        if self.eval_on_segments and is_heatmap == False:
+        # print("comes here inverse map")
+        if self.eval_on_segments and is_heatmap == False: # no in
             mask = scatter_mean(
                 mask, point2segment_full, dim=0
             )  # full res segments
@@ -887,7 +918,14 @@ class InstanceSegmentation(pl.LightningModule):
             ]  # full res points
 
         return mask
-
+    '''
+    scores, masks, classes, heatmap = self.get_mask_and_scores(
+                prediction[self.decoder_id]["pred_logits"][bid].detach().cpu(),
+                masks,
+                prediction[self.decoder_id]["pred_logits"][bid].shape[0],
+                self.model.num_classes - 1,
+            )
+    '''
     def get_mask_and_scores(
         self, mask_cls, mask_pred, num_queries=100, num_classes=18, device=None
     ):
@@ -901,6 +939,7 @@ class InstanceSegmentation(pl.LightningModule):
         )
 
         scores_per_query, labels_per_query = mask_cls.max(dim=1)
+        # print(scores_per_query, labels_per_query)
 
         result_pred_mask = (mask_pred > 0).float()
         heatmap = mask_pred.float().sigmoid()
@@ -965,7 +1004,7 @@ class InstanceSegmentation(pl.LightningModule):
         all_parts_pred_scores = list()
         all_parts_heatmaps = list()
         all_parts_query_pos = list()
-
+        print("from eval isntance step")
         for bid in range(len(prediction[self.decoder_id]["pred_masks"])):
             if self.model.train_on_segments:
                 masks = (
@@ -1259,6 +1298,7 @@ class InstanceSegmentation(pl.LightningModule):
         first_full_res=False,
         backbone_features=None,
     ):
+        # print(output)
         label_offset = self.validation_dataset.label_offset
         prediction = output["aux_outputs"]
         prediction.append(
@@ -1281,8 +1321,9 @@ class InstanceSegmentation(pl.LightningModule):
         all_pred_scores = list()
         all_heatmaps = list()
         all_query_pos = list()
-
+        # print("from eval instance step instance segmentation")
         for bid in range(len(prediction[self.decoder_id]["pred_masks"])):
+            # print(bid)
             if self.model.train_on_segments:
                 masks = (
                     prediction[self.decoder_id]["pred_masks"][bid]
@@ -1295,27 +1336,35 @@ class InstanceSegmentation(pl.LightningModule):
                     .detach()
                     .cpu()
                 )
-
+            # print("First masks=======================================")
+            # print(masks)
+            # print(masks.shape)
+            # print(prediction[self.decoder_id]["pred_logits"])
             scores, masks, classes, heatmap = self.get_mask_and_scores(
                 prediction[self.decoder_id]["pred_logits"][bid].detach().cpu(),
                 masks,
                 prediction[self.decoder_id]["pred_logits"][bid].shape[0],
                 self.model.num_classes - 1,
             )
-
+            print(scores)
+            # print("Second masks=======================================")
+            # print(masks)
+            # print(masks.shape)
             masks = self.get_full_res_mask(
                 masks,
                 inverse_maps[bid],
                 target_full_res[bid]["point2segment"],
             )
-
+            # print("Third masks=======================================")
+            # print(masks)
+            # print(masks.shape)
             heatmap = self.get_full_res_mask(
                 heatmap,
                 inverse_maps[bid],
                 target_full_res[bid]["point2segment"],
                 is_heatmap=True,
             )
-
+            # print("here3")
             if backbone_features is not None:
                 backbone_features = self.get_full_res_mask(
                     torch.from_numpy(backbone_features),
@@ -1333,9 +1382,10 @@ class InstanceSegmentation(pl.LightningModule):
             sort_scores_values = sort_scores.values.cpu().numpy()
             sort_classes = classes[sort_scores_index]
 
+            # print(sort_scores_index)
             sorted_masks = masks[:, sort_scores_index]
             sorted_heatmap = heatmap[:, sort_scores_index]
-
+            # print(sorted_masks)
             if self.config.general.filter_out_instances:
                 keep_instances = set()
                 pairwise_overlap = sorted_masks.T @ sorted_masks
@@ -1368,6 +1418,7 @@ class InstanceSegmentation(pl.LightningModule):
                 all_pred_scores.append(sort_scores_values[keep_instances])
                 all_heatmaps.append(sorted_heatmap[:, keep_instances])
             else:
+                print("i think here")
                 all_pred_classes.append(sort_classes)
                 all_pred_masks.append(sorted_masks)
                 all_pred_scores.append(sort_scores_values)
@@ -1446,6 +1497,7 @@ class InstanceSegmentation(pl.LightningModule):
                 self.bbox_gt[file_names[bid]] = bbox_data
 
             if self.config.general.eval_inner_core == -1:
+                # print("before important")
                 self.preds[file_names[bid]] = {
                     "pred_masks": all_pred_masks[bid],
                     "pred_scores": all_pred_scores[bid],
@@ -1460,7 +1512,7 @@ class InstanceSegmentation(pl.LightningModule):
                     "pred_scores": all_pred_scores[bid],
                     "pred_classes": all_pred_classes[bid],
                 }
-
+            # here very important
             if self.config.general.save_visualizations:
                 if "cond_inner" in self.test_dataset.data[idx[bid]]:
                     target_full_res[bid]["masks"] = target_full_res[bid][
@@ -1497,10 +1549,13 @@ class InstanceSegmentation(pl.LightningModule):
                         point_size=self.config.general.visualization_point_size,
                     )
                 else:
+                    print("finally comes here")
+                    print(bid)
+                    print(file_names[bid])
                     self.save_visualizations(
                         target_full_res[bid],
                         full_res_coords[bid],
-                        [self.preds[file_names[bid]]["pred_masks"]],
+                        [self.preds[file_names[bid]]["pred_masks"]], # sorted mask
                         [self.preds[file_names[bid]]["pred_classes"]],
                         file_names[bid].replace(
                             "egobody_validation_",
@@ -2070,6 +2125,7 @@ class InstanceSegmentation(pl.LightningModule):
         self.validation_dataset = hydra.utils.instantiate(
             self.config.data.validation_dataset
         )
+        # print(self.validation_dataset)
         self.test_dataset = hydra.utils.instantiate(
             self.config.data.test_dataset
         )

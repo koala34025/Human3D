@@ -657,20 +657,33 @@ class SemanticSegmentationDataset(Dataset):
 
         labels = np.hstack((labels, segments[..., None].astype(np.int32)))
 
+        
+
         features = color
         if self.add_normals:
+            # print("ADD_NORMALS")
             features = np.hstack((features, normals))
         if self.add_raw_coordinates:
             if len(features.shape) == 1:
+                # print("ADD_RAW_EQ1")
                 features = np.hstack((features[None, ...], coordinates))
             else:
+                # print("ADD_RAW_NEQ1")
                 features = np.hstack((features, coordinates))
 
         if "train" in self.mode and np.unique(labels[:, -2]).shape[0] < 2:
             print("NO INSTANCES")
             return self.__getitem__(randrange(len(self.data)))
         if not self.use_color:
+            print("NOT USE COLOR")
             features[:, :3] = 1.0  # make sure no color information is leaked
+        # print(coordinates)
+        # print(features) = sample[1] = color
+
+        # print("~~~~~~~~~~~~~~~")
+        # print(features)
+        # print("~~~~~~~~~~~~~~~")
+
         return (
             coordinates,
             features,

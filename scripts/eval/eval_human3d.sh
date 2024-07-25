@@ -20,4 +20,4 @@ general.reps_per_epoch=1 \
 model.config.backbone._target_=models.Res16UNet18B \
 general.checkpoint="checkpoints/human3d.ckpt" \
 general.train_mode=false \
-general.save_visualizations=false
+general.save_visualizations=true

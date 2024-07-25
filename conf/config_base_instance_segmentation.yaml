@@ -57,7 +57,7 @@ general:
 defaults:
   - data: indoor
   - data/data_loaders: simple_loader
-  - data/datasets: scannet
+  - data/datasets: egobody
   - data/collation_functions: voxelize_collate
   - logging: full
   - model: mask3d

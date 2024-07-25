@@ -81,6 +81,10 @@ def train(cfg: DictConfig):
     )
     runner.fit(model)
 
+from time import time
+# ANSI escape codes for colors
+RESET = "\033[0m"
+CYAN = "\033[96m"
 
 @hydra.main(
     config_path="conf", config_name="config_base_instance_segmentation.yaml"
@@ -95,8 +99,16 @@ def test(cfg: DictConfig):
         weights_save_path=str(cfg.general.save_dir),
         **cfg.trainer,
     )
+    # Measure time before running the test
+    start_time = time()
+    
     runner.test(model)
 
+    # Measure time after running the test
+    end_time = time()
+    elapsed_time = end_time - start_time
+
+    print(f"{CYAN}Elapsed time: {elapsed_time:.2f} seconds{RESET}")
 
 @hydra.main(
     config_path="conf", config_name="config_base_instance_segmentation.yaml"

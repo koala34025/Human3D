@@ -293,11 +293,15 @@ class HumanSegmentationDataset(BasePreprocessing):
 
         # reading both files and checking that they are fitting
         pcd = self.read_plyfile(filepath)
+        # print(filepath)
+        # print(pcd.shape)
+        
         coords = pcd[:, :3]
-
+        # print(coords.shape)
         # fix rotation bug
         coords = coords[:, [0, 2, 1]]
         coords[:, 2] = -coords[:, 2]
+        print(coords)
 
         rgb = pcd[:, 3:6]
         instance_id = pcd[:, 6][..., None]

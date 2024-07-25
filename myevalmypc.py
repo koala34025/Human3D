@@ -298,7 +298,8 @@ def save_colorized_mesh(points, pred_coords, output_file):
     color_map = {
         0: [0, 0, 0],       # Black for background
         1: [255, 0, 0],     # Red for first human
-        2: [0, 255, 0]      # Green for second human
+        2: [0, 255, 0],      # Green for second human
+        3: [0, 0, 255]
     }
 
     # Create a numpy array to hold the colors for each point
@@ -307,6 +308,7 @@ def save_colorized_mesh(points, pred_coords, output_file):
     # Mark all points as background initially
     colors[:] = color_map[0]
     
+    # really bad time complexity
     # Color points for the first human
     for coord in pred_coords[0]:
         idx = np.where((points == coord).all(axis=1))[0]
